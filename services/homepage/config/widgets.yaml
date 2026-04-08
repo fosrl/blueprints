@@ -1,0 +1,4 @@
+- resources:
+    cpu: true
+    memory: true
+

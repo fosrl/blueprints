@@ -1,0 +1,615 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SERVICES_DIR="${ROOT_DIR}/services"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./bin/blueprint list
+  ./bin/blueprint new [--name NAME] [--subdomain SUBDOMAIN] [--container-name NAME] [--port PORT] <slug>
+  ./bin/blueprint init [--force] <service>
+  ./bin/blueprint auth <service>
+  ./bin/blueprint up-base [extra docker compose args...]
+  ./bin/blueprint down-base [extra docker compose args...]
+  ./bin/blueprint logs-base [extra docker compose args...]
+  ./bin/blueprint ps-base [extra docker compose args...]
+  ./bin/blueprint cmd <service> <docker compose args...>
+  ./bin/blueprint config <service> [extra docker compose args...]
+  ./bin/blueprint up <service> [extra docker compose args...]
+  ./bin/blueprint down <service> [extra docker compose args...]
+  ./bin/blueprint pull <service> [extra docker compose args...]
+  ./bin/blueprint logs <service> [extra docker compose args...]
+  ./bin/blueprint ps <service> [extra docker compose args...]
+EOF
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+humanize_slug() {
+  local slug="$1"
+
+  printf '%s\n' "${slug}" | tr '-_' ' ' | awk '{
+    for (i = 1; i <= NF; i++) {
+      $i = toupper(substr($i, 1, 1)) substr($i, 2)
+    }
+    print
+  }'
+}
+
+validate_slug() {
+  local slug="$1"
+
+  [[ "${slug}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "slug must match ^[a-z0-9][a-z0-9-]*$"
+}
+
+list_services() {
+  local service_dir
+
+  for service_dir in "${SERVICES_DIR}"/*; do
+    [[ -d "${service_dir}" ]] || continue
+    [[ "$(basename "${service_dir}")" == "_template" ]] && continue
+    [[ -f "${service_dir}/docker-compose.yml" ]] || continue
+    basename "${service_dir}"
+  done
+}
+
+scaffold_blueprint() {
+  local slug="$1"
+  local resource_name="${2:-}"
+  local subdomain="${3:-}"
+  local service_container_name="${4:-}"
+  local service_port="${5:-}"
+  local target_dir="${SERVICES_DIR}/${slug}"
+  local file
+
+  validate_slug "${slug}"
+
+  [[ -d "${SERVICES_DIR}/_template" ]] || die "missing ${SERVICES_DIR}/_template"
+  [[ ! -e "${target_dir}" ]] || die "${target_dir} already exists"
+
+  [[ -n "${resource_name}" ]] || resource_name="$(humanize_slug "${slug}")"
+  [[ -n "${subdomain}" ]] || subdomain="${slug}"
+  [[ -n "${service_container_name}" ]] || service_container_name="${slug}"
+  [[ -n "${service_port}" ]] || service_port="8080"
+
+  cp -R "${SERVICES_DIR}/_template" "${target_dir}"
+
+  while IFS= read -r -d '' file; do
+    sed -i \
+      -e "s/__SLUG__/${slug}/g" \
+      -e "s/__RESOURCE_NAME__/${resource_name}/g" \
+      -e "s/__SERVICE_SUBDOMAIN__/${subdomain}/g" \
+      -e "s/__SERVICE_CONTAINER_NAME__/${service_container_name}/g" \
+      -e "s/__SERVICE_PORT__/${service_port}/g" \
+      "${file}"
+  done < <(find "${target_dir}" -type f -print0)
+
+  echo "created blueprint scaffold: ${target_dir}"
+  echo "next steps:"
+  echo "  1. Edit ${target_dir}/docker-compose.yml"
+  echo "  2. Edit ${target_dir}/.env.example"
+  echo "  3. Run ./bin/blueprint init ${slug}"
+  echo "  4. Run ./bin/blueprint auth ${slug}"
+  echo "  5. Run ./bin/blueprint config ${slug}"
+}
+
+ensure_root_env() {
+  [[ -f "${ROOT_DIR}/.env" ]] || die "missing ${ROOT_DIR}/.env; copy .env.example first"
+}
+
+random_string() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 48 | tr -d '\n=+/' | cut -c1-32
+    return
+  fi
+
+  tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 32
+}
+
+generate_token_id() {
+  local value="$1"
+
+  if [[ "${value}" =~ ^GENERATE_[A-Z0-9_]+$ ]]; then
+    printf '%s\n' "${value}"
+    return
+  fi
+
+  printf '\n'
+}
+
+is_secret_key() {
+  local key="$1"
+
+  [[ "${key}" =~ (PASSWORD|SECRET|TOKEN|API_KEY|ACCESS_KEY|PRIVATE_KEY|SESSION_KEY)$ ]]
+}
+
+should_randomize_value() {
+  local key="$1"
+  local value="$2"
+  local lowered_value="${value,,}"
+
+  if [[ -n "$(generate_token_id "${value}")" ]]; then
+    return 0
+  fi
+
+  is_secret_key "${key}" || return 1
+  [[ -z "${value}" || "${lowered_value}" == "generate_me" || "${lowered_value}" == "changeme" || "${lowered_value}" == "change_me" || "${lowered_value}" == "replace-me" ]]
+}
+
+init_service_env() {
+  local service="$1"
+  local force="${2:-false}"
+  local service_dir="${SERVICES_DIR}/${service}"
+  local source_env
+  local target_env
+  local line
+  local key
+  local value
+  local token_id
+  local generated_keys=()
+  local -A generated_values=()
+
+  [[ -d "${service_dir}" ]] || die "unknown service '${service}'"
+
+  source_env="${service_dir}/.env.example"
+  target_env="${service_dir}/.env"
+
+  [[ -f "${source_env}" ]] || die "missing ${source_env}"
+
+  if [[ -f "${target_env}" && "${force}" != "true" ]]; then
+    die "${target_env} already exists; use 'init --force ${service}' to recreate it"
+  fi
+
+  : > "${target_env}"
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    if [[ "${line}" =~ ^[[:space:]]*$ || "${line}" =~ ^[[:space:]]*# ]]; then
+      printf '%s\n' "${line}" >> "${target_env}"
+      continue
+    fi
+
+    if [[ "${line}" != *=* ]]; then
+      printf '%s\n' "${line}" >> "${target_env}"
+      continue
+    fi
+
+    key="${line%%=*}"
+    value="${line#*=}"
+
+    if should_randomize_value "${key}" "${value}"; then
+      token_id="$(generate_token_id "${value}")"
+
+      if [[ -n "${token_id}" ]]; then
+        if [[ -z "${generated_values[${token_id}]+x}" ]]; then
+          generated_values["${token_id}"]="$(random_string)"
+        fi
+        value="${generated_values[${token_id}]}"
+      else
+        value="$(random_string)"
+      fi
+
+      generated_keys+=("${key}")
+    fi
+
+    printf '%s=%s\n' "${key}" "${value}" >> "${target_env}"
+  done < "${source_env}"
+
+  echo "created ${target_env} from .env.example" >&2
+  if [[ ${#generated_keys[@]} -gt 0 ]]; then
+    echo "generated secrets for: ${generated_keys[*]}" >&2
+  fi
+}
+
+ensure_service_env() {
+  local service="$1"
+  local service_dir="${SERVICES_DIR}/${service}"
+
+  if [[ -f "${service_dir}/.env" ]]; then
+    return
+  fi
+
+  if [[ -f "${service_dir}/.env.example" ]]; then
+    init_service_env "${service}"
+    return
+  fi
+
+  die "missing ${service_dir}/.env"
+}
+
+build_env_file() {
+  local service_dir="$1"
+  local env_file
+
+  env_file="$(mktemp)"
+  trap 'rm -f "${env_file}"' RETURN
+
+  cat "${ROOT_DIR}/.env" > "${env_file}"
+  printf '\n' >> "${env_file}"
+  cat "${service_dir}/.env" >> "${env_file}"
+
+  printf '%s\n' "${env_file}"
+  trap - RETURN
+}
+
+strip_wrapping_quotes() {
+  local value="$1"
+
+  if [[ "${value}" =~ ^\".*\"$ || "${value}" =~ ^\'.*\'$ ]]; then
+    printf '%s\n' "${value:1:${#value}-2}"
+    return
+  fi
+
+  printf '%s\n' "${value}"
+}
+
+load_env_map() {
+  local env_file="$1"
+  local -n env_map_ref="$2"
+  local line
+  local key
+  local value
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ "${line}" =~ ^[[:space:]]*$ ]] && continue
+    [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+    [[ "${line}" == *=* ]] || continue
+
+    key="${line%%=*}"
+    value="${line#*=}"
+    value="$(strip_wrapping_quotes "${value}")"
+    env_map_ref["${key}"]="${value}"
+  done < "${env_file}"
+}
+
+resolve_auth_scalar() {
+  local -n env_map_ref="$1"
+  local resource_key="$2"
+  local global_key="$3"
+
+  if [[ -n "${env_map_ref[${resource_key}]-}" ]]; then
+    printf '%s\n' "${env_map_ref[${resource_key}]}"
+    return
+  fi
+
+  printf '%s\n' "${env_map_ref[${global_key}]-}"
+}
+
+collect_auth_array_values() {
+  local -n env_map_ref="$1"
+  local global_prefix="$2"
+  local resource_prefix="$3"
+  local -n values_ref="$4"
+  local idx
+  local key
+
+  for idx in {0..31}; do
+    key="${global_prefix}${idx}"
+    if [[ -n "${env_map_ref[${key}]-}" ]]; then
+      values_ref+=("${env_map_ref[${key}]}")
+    fi
+  done
+
+  for idx in {0..31}; do
+    key="${resource_prefix}${idx}"
+    if [[ -n "${env_map_ref[${key}]-}" ]]; then
+      values_ref+=("${env_map_ref[${key}]}")
+    fi
+  done
+}
+
+append_auth_label() {
+  local -n labels_ref="$1"
+  local label_key="$2"
+  local label_value="$3"
+
+  [[ -n "${label_value}" ]] || return
+  labels_ref+=("${label_key}=${label_value}")
+}
+
+append_indexed_auth_labels() {
+  local -n labels_ref="$1"
+  local label_prefix="$2"
+  local -n values_ref="$3"
+  local idx
+
+  for idx in "${!values_ref[@]}"; do
+    labels_ref+=("${label_prefix}[${idx}]=${values_ref[${idx}]}")
+  done
+}
+
+yaml_quote() {
+  local value="$1"
+
+  value="${value//\'/\'\'}"
+  printf "'%s'\n" "${value}"
+}
+
+build_auth_override_file() {
+  local merged_env="$1"
+  local override_file
+  local -A env_map=()
+  local -a labels=()
+  local -a sso_roles=()
+  local -a sso_users=()
+  local -a whitelist_users=()
+  local service_container_name
+  local blueprint_name
+
+  load_env_map "${merged_env}" env_map
+
+  service_container_name="${env_map[SERVICE_CONTAINER_NAME]-}"
+  blueprint_name="${env_map[BLUEPRINT_NAME]-}"
+
+  [[ -n "${service_container_name}" ]] || {
+    printf '\n'
+    return
+  }
+  [[ -n "${blueprint_name}" ]] || die "missing BLUEPRINT_NAME in merged env"
+
+  append_auth_label labels "pangolin.public-resources.${blueprint_name}.auth.pincode" "$(resolve_auth_scalar env_map RESOURCE_AUTH_PINCODE GLOBAL_AUTH_PINCODE)"
+  append_auth_label labels "pangolin.public-resources.${blueprint_name}.auth.password" "$(resolve_auth_scalar env_map RESOURCE_AUTH_PASSWORD GLOBAL_AUTH_PASSWORD)"
+  append_auth_label labels "pangolin.public-resources.${blueprint_name}.auth.basic-auth.user" "$(resolve_auth_scalar env_map RESOURCE_AUTH_BASIC_USER GLOBAL_AUTH_BASIC_USER)"
+  append_auth_label labels "pangolin.public-resources.${blueprint_name}.auth.basic-auth.password" "$(resolve_auth_scalar env_map RESOURCE_AUTH_BASIC_PASSWORD GLOBAL_AUTH_BASIC_PASSWORD)"
+  append_auth_label labels "pangolin.public-resources.${blueprint_name}.auth.sso-enabled" "$(resolve_auth_scalar env_map RESOURCE_AUTH_SSO_ENABLED GLOBAL_AUTH_SSO_ENABLED)"
+
+  collect_auth_array_values env_map GLOBAL_AUTH_SSO_ROLE_ RESOURCE_AUTH_SSO_ROLE_ sso_roles
+  collect_auth_array_values env_map GLOBAL_AUTH_SSO_USER_ RESOURCE_AUTH_SSO_USER_ sso_users
+  collect_auth_array_values env_map GLOBAL_AUTH_WHITELIST_USER_ RESOURCE_AUTH_WHITELIST_USER_ whitelist_users
+
+  append_indexed_auth_labels labels "pangolin.public-resources.${blueprint_name}.auth.sso-roles" sso_roles
+  append_indexed_auth_labels labels "pangolin.public-resources.${blueprint_name}.auth.sso-users" sso_users
+  append_indexed_auth_labels labels "pangolin.public-resources.${blueprint_name}.auth.whitelist-users" whitelist_users
+
+  [[ ${#labels[@]} -gt 0 ]] || {
+    printf '\n'
+    return
+  }
+
+  override_file="$(mktemp)"
+  {
+    printf 'services:\n'
+    printf '  %s:\n' "${service_container_name}"
+    printf '    labels:\n'
+    for line in "${labels[@]}"; do
+      printf '      - %s\n' "$(yaml_quote "${line}")"
+    done
+  } > "${override_file}"
+
+  printf '%s\n' "${override_file}"
+}
+
+print_auth_preview() {
+  local service="$1"
+  local service_dir="${SERVICES_DIR}/${service}"
+  local merged_env
+  local auth_override_file
+
+  [[ -d "${service_dir}" ]] || die "unknown service '${service}'"
+
+  ensure_root_env
+  ensure_service_env "${service}"
+  merged_env="$(build_env_file "${service_dir}")"
+  auth_override_file="$(build_auth_override_file "${merged_env}")"
+
+  if [[ -n "${auth_override_file}" ]]; then
+    cat "${auth_override_file}"
+    rm -f "${auth_override_file}"
+  else
+    echo "no generated auth labels for ${service}"
+  fi
+
+  rm -f "${merged_env}"
+}
+
+print_service_access_info() {
+  local service="$1"
+  local service_dir="${SERVICES_DIR}/${service}"
+  local merged_env
+  local -A env_map=()
+  local base_domain
+  local service_subdomain
+  local resource_name
+
+  [[ -d "${service_dir}" ]] || die "unknown service '${service}'"
+
+  ensure_root_env
+  ensure_service_env "${service}"
+  merged_env="$(build_env_file "${service_dir}")"
+  load_env_map "${merged_env}" env_map
+
+  base_domain="${env_map[BASE_DOMAIN]-}"
+  service_subdomain="${env_map[SERVICE_SUBDOMAIN]-}"
+  resource_name="${env_map[RESOURCE_NAME]-${service}}"
+
+  if [[ -n "${base_domain}" && -n "${service_subdomain}" ]]; then
+    echo
+    echo "Public URL (${resource_name}): https://${service_subdomain}.${base_domain}"
+  fi
+
+  rm -f "${merged_env}"
+}
+
+compose_base() {
+  ensure_root_env
+
+  docker compose \
+    --project-name pangolin-base \
+    --env-file "${ROOT_DIR}/.env" \
+    -f "${ROOT_DIR}/docker-compose.yml" \
+    "$@"
+}
+
+compose_for_service() {
+  local service="$1"
+  shift
+
+  local service_dir="${SERVICES_DIR}/${service}"
+  local merged_env
+  local auth_override_file
+
+  [[ -d "${service_dir}" ]] || die "unknown service '${service}'"
+  [[ -f "${service_dir}/docker-compose.yml" ]] || die "missing ${service_dir}/docker-compose.yml"
+
+  ensure_root_env
+  ensure_service_env "${service}"
+  merged_env="$(build_env_file "${service_dir}")"
+  auth_override_file="$(build_auth_override_file "${merged_env}")"
+
+  if [[ -n "${auth_override_file}" ]]; then
+    docker compose \
+      --project-name "blueprint-${service}" \
+      --env-file "${merged_env}" \
+      -f "${service_dir}/docker-compose.yml" \
+      -f "${auth_override_file}" \
+      "$@"
+  else
+    docker compose \
+      --project-name "blueprint-${service}" \
+      --env-file "${merged_env}" \
+      -f "${service_dir}/docker-compose.yml" \
+      "$@"
+  fi
+
+  rm -f "${merged_env}"
+  [[ -n "${auth_override_file}" ]] && rm -f "${auth_override_file}"
+}
+
+main() {
+  local action="${1:-}"
+
+  case "${action}" in
+    list)
+      list_services
+      ;;
+    new)
+      local new_name=""
+      local new_subdomain=""
+      local new_container_name=""
+      local new_port=""
+      local new_slug=""
+
+      shift
+
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --name)
+            [[ $# -ge 2 ]] || die "--name requires a value"
+            new_name="$2"
+            shift 2
+            ;;
+          --subdomain)
+            [[ $# -ge 2 ]] || die "--subdomain requires a value"
+            new_subdomain="$2"
+            shift 2
+            ;;
+          --container-name)
+            [[ $# -ge 2 ]] || die "--container-name requires a value"
+            new_container_name="$2"
+            shift 2
+            ;;
+          --port)
+            [[ $# -ge 2 ]] || die "--port requires a value"
+            new_port="$2"
+            shift 2
+            ;;
+          -*)
+            die "unknown option '$1'"
+            ;;
+          *)
+            [[ -z "${new_slug}" ]] || die "new accepts only one slug"
+            new_slug="$1"
+            shift
+            ;;
+        esac
+      done
+
+      [[ -n "${new_slug}" ]] || die "new requires a slug"
+      scaffold_blueprint "${new_slug}" "${new_name}" "${new_subdomain}" "${new_container_name}" "${new_port}"
+      ;;
+    init)
+      local force_init="false"
+
+      shift
+
+      if [[ "${1:-}" == "--force" ]]; then
+        force_init="true"
+        shift
+      fi
+
+      [[ $# -ge 1 ]] || die "init requires a service name"
+      init_service_env "$1" "${force_init}"
+      ;;
+    auth)
+      [[ $# -ge 2 ]] || die "auth requires a service name"
+      shift
+      print_auth_preview "$1"
+      ;;
+    up-base)
+      shift
+      compose_base up -d "${@}"
+      ;;
+    down-base)
+      shift
+      compose_base down "${@}"
+      ;;
+    logs-base)
+      shift
+      compose_base logs -f "${@}"
+      ;;
+    ps-base)
+      shift
+      compose_base ps "${@}"
+      ;;
+    cmd)
+      [[ $# -ge 3 ]] || die "cmd requires a service name and docker compose arguments"
+      shift
+      compose_for_service "$1" "${@:2}"
+      ;;
+    config)
+      [[ $# -ge 2 ]] || die "config requires a service name"
+      shift
+      compose_for_service "$1" config "${@:2}"
+      ;;
+    up)
+      [[ $# -ge 2 ]] || die "up requires a service name"
+      shift
+      compose_base up -d newt
+      compose_for_service "$1" up -d "${@:2}"
+      print_service_access_info "$1"
+      ;;
+    down)
+      [[ $# -ge 2 ]] || die "down requires a service name"
+      shift
+      compose_for_service "$1" down "${@:2}"
+      ;;
+    pull)
+      [[ $# -ge 2 ]] || die "pull requires a service name"
+      shift
+      compose_for_service "$1" pull "${@:2}"
+      ;;
+    logs)
+      [[ $# -ge 2 ]] || die "logs requires a service name"
+      shift
+      compose_for_service "$1" logs -f "${@:2}"
+      ;;
+    ps)
+      [[ $# -ge 2 ]] || die "ps requires a service name"
+      shift
+      compose_for_service "$1" ps "${@:2}"
+      ;;
+    ""|-h|--help|help)
+      usage
+      ;;
+    *)
+      usage
+      die "unknown action '${action}'"
+      ;;
+  esac
+}
+
+main "$@"

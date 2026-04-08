@@ -1,0 +1,18 @@
+# Repository-local environment files
+/.env
+/.env.local
+
+# Tooling artifacts
+/.codex
+
+# Root-level runtime data
+/data/
+
+# Blueprint-local environment files
+/services/*/.env
+/services/*/.env.local
+
+# Blueprint-local persisted state
+/services/*/data/
+/services/*/volumes/
+/services/*/storage/

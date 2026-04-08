@@ -1,0 +1,28 @@
+services:
+  homepage:
+    image: ${HOMEPAGE_IMAGE:-ghcr.io/gethomepage/homepage}:${HOMEPAGE_TAG:-latest}
+    container_name: ${SERVICE_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - HOMEPAGE_VAR_BASE_DOMAIN=${BASE_DOMAIN}
+      - HOMEPAGE_VAR_HOMEPAGE_TITLE=${HOMEPAGE_TITLE}
+    expose:
+      - "${SERVICE_PORT}"
+    volumes:
+      - ./config:/app/config
+    labels:
+      - pangolin.public-resources.${BLUEPRINT_NAME}.name=${RESOURCE_NAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.full-domain=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.protocol=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].method=http
+    networks:
+      - pangolin
+
+networks:
+  pangolin:
+    external: true
+    name: ${PANGOLIN_DOCKER_NETWORK:-pangolin_default}
+

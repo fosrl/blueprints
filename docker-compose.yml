@@ -1,0 +1,18 @@
+services:
+  newt:
+    image: ${NEWT_IMAGE:-fosrl/newt:latest}
+    container_name: ${NEWT_CONTAINER_NAME:-newt}
+    restart: unless-stopped
+    volumes:
+      - ${HOST_CONTAINER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+    environment:
+      - PANGOLIN_ENDPOINT=${PANGOLIN_ENDPOINT}
+      - NEWT_ID=${NEWT_ID}
+      - NEWT_SECRET=${NEWT_SECRET}
+      - DOCKER_SOCKET=/var/run/docker.sock
+    networks:
+      - pangolin
+
+networks:
+  pangolin:
+    name: ${PANGOLIN_DOCKER_NETWORK:-pangolin_default}

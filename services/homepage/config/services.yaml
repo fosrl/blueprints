@@ -1,0 +1,6 @@
+- Pangolin:
+    - Dashboard:
+        icon: mdi-shield-key-outline
+        href: https://app.pangolin.net
+        description: Pangolin control plane
+

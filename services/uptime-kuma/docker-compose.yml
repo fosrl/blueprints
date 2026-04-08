@@ -1,0 +1,24 @@
+services:
+  uptime-kuma:
+    image: ${UPTIME_KUMA_IMAGE:-louislam/uptime-kuma}:${UPTIME_KUMA_TAG:-2}
+    container_name: ${SERVICE_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    expose:
+      - "${SERVICE_PORT}"
+    volumes:
+      - ./data:/app/data
+    labels:
+      - pangolin.public-resources.${BLUEPRINT_NAME}.name=${RESOURCE_NAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.full-domain=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.protocol=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].method=http
+    networks:
+      - pangolin
+
+networks:
+  pangolin:
+    external: true
+    name: ${PANGOLIN_DOCKER_NETWORK:-pangolin_default}
+

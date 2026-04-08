@@ -1,0 +1,75 @@
+services:
+  immich-server:
+    image: ${IMMICH_SERVER_IMAGE:-ghcr.io/immich-app/immich-server}:${IMMICH_SERVER_TAG:-release}
+    container_name: ${SERVICE_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    depends_on:
+      immich-redis:
+        condition: service_healthy
+      immich-database:
+        condition: service_healthy
+    expose:
+      - "${SERVICE_PORT}"
+    volumes:
+      - ${UPLOAD_LOCATION:-./data/library}:/usr/src/app/upload
+      - /etc/localtime:/etc/localtime:ro
+    labels:
+      - pangolin.public-resources.${BLUEPRINT_NAME}.name=${RESOURCE_NAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.full-domain=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.protocol=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].method=http
+    networks:
+      - pangolin
+      - immich
+
+  immich-machine-learning:
+    image: ${IMMICH_MACHINE_LEARNING_IMAGE:-ghcr.io/immich-app/immich-machine-learning}:${IMMICH_MACHINE_LEARNING_TAG:-release}
+    container_name: immich-machine-learning
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    volumes:
+      - ./data/model-cache:/cache
+    networks:
+      - immich
+
+  immich-redis:
+    image: ${REDIS_IMAGE:-redis}:${REDIS_TAG:-7-alpine}
+    container_name: immich-redis
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli ping || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - immich
+
+  immich-database:
+    image: ${POSTGRES_IMAGE:-tensorchord/pgvecto-rs}:${POSTGRES_TAG:-pg14-v0.2.0}
+    container_name: immich-database
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready --dbname=${POSTGRES_DB} --username=${POSTGRES_USER} || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - immich
+
+networks:
+  pangolin:
+    external: true
+    name: ${PANGOLIN_DOCKER_NETWORK:-pangolin_default}
+  immich:
+    driver: bridge

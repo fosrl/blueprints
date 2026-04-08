@@ -1,0 +1,24 @@
+services:
+  __SERVICE_CONTAINER_NAME__:
+    image: ${APP_IMAGE:?set APP_IMAGE in the blueprint .env}
+    container_name: ${SERVICE_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    expose:
+      - "${SERVICE_PORT}"
+    labels:
+      - pangolin.public-resources.${BLUEPRINT_NAME}.name=${RESOURCE_NAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.full-domain=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.protocol=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].method=http
+      # Uncomment these if Pangolin auto-detection is not enough:
+      # - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].hostname=${SERVICE_CONTAINER_NAME}
+      # - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].port=${SERVICE_PORT}
+    networks:
+      - pangolin
+
+networks:
+  pangolin:
+    external: true
+    name: ${PANGOLIN_DOCKER_NETWORK:-pangolin_default}
