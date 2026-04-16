@@ -265,7 +265,7 @@ If you want to contribute a blueprint:
 4. Run `./bin/blueprint auth <your-app>` and `./bin/blueprint config <your-app>`.
 5. Document what the blueprint exposes and what users need to change.
 
-Start with [CONTRIBUTING.md](/opt/blueprints/CONTRIBUTING.md) and [COMMUNITY.md](/opt/blueprints/COMMUNITY.md).
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) and [COMMUNITY.md](COMMUNITY.md).
 
 ## Why The Wrapper Exists
 
