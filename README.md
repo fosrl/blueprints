@@ -10,8 +10,13 @@ Each blueprint lives in `services/<name>/` and is designed to work with Pangolin
 
 ## Available Blueprints
 
+- `grafana`: dashboards and observability UI
 - `homepage`: self-hosted dashboard with starter config files
 - `immich`: photo and video backup
+- `jellyfin`: media server
+- `nextcloud`: standard Nextcloud with Redis and PostgreSQL
+- `nextcloud-aio`: Nextcloud All-in-One master container adapted for Pangolin
+- `prometheus`: metrics collection and querying
 - `uptime-kuma`: status page and monitoring
 
 ## Create A Blueprint
@@ -153,7 +158,7 @@ To preview the generated auth labels without starting the stack:
 
 `./bin/blueprint up <service>` also starts `newt` automatically.
 
-Starter blueprints currently include `homepage`, `immich`, and `uptime-kuma`.
+Starter blueprints currently include `grafana`, `homepage`, `immich`, `jellyfin`, `nextcloud`, `nextcloud-aio`, `prometheus`, and `uptime-kuma`.
 
 ## Updating Images
 
@@ -196,6 +201,9 @@ The shared `.env` stores:
 - `PANGOLIN_ENDPOINT`
 - `NEWT_ID`
 - `NEWT_SECRET`
+- `NEWT_METRICS_PROMETHEUS_ENABLED`
+- `NEWT_ADMIN_ADDR`
+- `NEWT_ADMIN_PORT`
 - `PANGOLIN_DOCKER_NETWORK`
 - `HOST_CONTAINER_SOCKET`
 - optional `GLOBAL_AUTH_*` defaults
@@ -219,8 +227,13 @@ ${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
 |-- COMMUNITY.md
 `-- services/
     |-- _template/
+    |-- grafana/
     |-- homepage/
     |-- immich/
+    |-- jellyfin/
+    |-- nextcloud/
+    |-- nextcloud-aio/
+    |-- prometheus/
     `-- uptime-kuma/
 ```
 

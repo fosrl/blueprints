@@ -1,0 +1,33 @@
+services:
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:-prom/prometheus}:${PROMETHEUS_TAG:-latest}
+    container_name: ${SERVICE_CONTAINER_NAME}
+    restart: unless-stopped
+    user: "0"
+    env_file:
+      - ./.env
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-15d}
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-lifecycle
+      - --web.external-url=${PROMETHEUS_EXTERNAL_URL}
+    expose:
+      - "${SERVICE_PORT}"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - ./data:/prometheus:Z
+    labels:
+      - pangolin.public-resources.${BLUEPRINT_NAME}.name=${RESOURCE_NAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.full-domain=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.protocol=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].method=http
+    networks:
+      - pangolin
+
+networks:
+  pangolin:
+    external: true
+    name: ${PANGOLIN_DOCKER_NETWORK:-pangolin_default}

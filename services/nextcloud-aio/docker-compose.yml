@@ -1,0 +1,30 @@
+services:
+  nextcloud-aio-mastercontainer:
+    image: ${NEXTCLOUD_AIO_IMAGE:-ghcr.io/nextcloud-releases/all-in-one}:${NEXTCLOUD_AIO_TAG:-latest}
+    init: true
+    container_name: nextcloud-aio-mastercontainer
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      - APACHE_PORT=${NEXTCLOUD_AIO_APACHE_PORT}
+      - APACHE_ADDITIONAL_NETWORK=${NEXTCLOUD_AIO_APACHE_ADDITIONAL_NETWORK}
+      - NEXTCLOUD_DATADIR=${NEXTCLOUD_AIO_DATADIR}
+      - WATCHTOWER_DOCKER_SOCKET_PATH=/var/run/docker.sock
+    ports:
+      - "${NEXTCLOUD_AIO_SETUP_PORT:-8080}:8080"
+    volumes:
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config
+      - ${HOST_CONTAINER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro
+    labels:
+      - pangolin.public-resources.${BLUEPRINT_NAME}.name=${RESOURCE_NAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.full-domain=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.protocol=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].method=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].hostname=${NEXTCLOUD_AIO_TARGET_HOSTNAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].port=${SERVICE_PORT}
+    network_mode: bridge
+
+volumes:
+  nextcloud_aio_mastercontainer:
+    name: nextcloud_aio_mastercontainer

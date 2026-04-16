@@ -1,6 +1,6 @@
 .env
 .env.local
-config/logs/
 data/
 volumes/
 storage/
+
