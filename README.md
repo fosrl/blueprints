@@ -1,12 +1,12 @@
 # Pangolin Blueprints
 
-Community-maintained Docker Compose blueprints for self-hosted apps behind Pangolin.
+<p align="center">
+  <a href="https://pangolin.net">Pangolin</a> |
+  <a href="https://app.pangolin.net">Pangolin Cloud</a> |
+  <a href="https://docs.pangolin.net/manage/blueprints">Blueprints Docs</a>
+</p>
 
-Each blueprint lives in `services/<name>/` and is designed to work with Pangolin + Newt using Docker labels. The goal is simple:
-
-- keep shared Pangolin/Newt config in one place
-- keep each app isolated in its own directory
-- make first-run setup as close as possible to `init` and `up`
+Community-maintained repository of ready-to-run Docker Compose blueprints for exposing applications through Pangolin.
 
 ## Available Blueprints
 
@@ -15,56 +15,46 @@ Each blueprint lives in `services/<name>/` and is designed to work with Pangolin
 - `immich`: photo and video backup
 - `jellyfin`: media server
 - `nextcloud`: standard Nextcloud with Redis and PostgreSQL
-- `nextcloud-aio`: Nextcloud All-in-One master container adapted for Pangolin
+- `nextcloud-aio`: Nextcloud All-in-One adapted for Pangolin
 - `prometheus`: metrics collection and querying
 - `uptime-kuma`: status page and monitoring
 
-## Create A Blueprint
+## What Blueprints Are
 
-Scaffold a new blueprint from the repo template:
+In Pangolin, a blueprint is a declarative way to define resources and their settings. This repo packages that idea into service-specific Docker Compose stacks with the Pangolin labels, environment files, and defaults already wired in.
 
-```bash
-./bin/blueprint new my-service
+Why that is useful:
+
+- you do not have to hand-write Pangolin Docker labels from scratch
+- each app stays isolated in `services/<name>/`
+- shared Pangolin and Newt settings live once in the root `.env`
+- service secrets can be generated during `init`
+- the normal flow is reduced to `init`, review, and `up`
+
+## Fastest Start
+
+1. Create a free account at [app.pangolin.net](https://app.pangolin.net) and add the domain you want these services to use.
+
+2. In Pangolin Cloud, create a site for the network where this Docker host runs, then copy that site's Newt configuration.
+
+You need these three values in this repo:
+
+```env
+PANGOLIN_ENDPOINT=https://app.pangolin.net
+NEWT_ID=...
+NEWT_SECRET=...
 ```
 
-You can override the defaults if needed:
+`NEWT_ID` identifies the site connector, `NEWT_SECRET` authenticates it, and the Pangolin Cloud endpoint is `https://app.pangolin.net`.
+
+3. Clone this repository and create the shared repo env:
 
 ```bash
-./bin/blueprint new \
-  --name "My Service" \
-  --subdomain my-service \
-  --container-name my-service \
-  --port 8080 \
-  my-service
+git clone https://github.com/fosrl/blueprints
+cd blueprints && cp .env.example .env
 ```
 
-The scaffold command creates a new directory under `services/` and pre-fills:
-
-- `BLUEPRINT_NAME`
-- `RESOURCE_NAME`
-- `SERVICE_SUBDOMAIN`
-- `SERVICE_CONTAINER_NAME`
-- `SERVICE_PORT`
-
-After scaffolding, the normal contributor flow is:
-
-```bash
-./bin/blueprint init my-service
-./bin/blueprint auth my-service
-./bin/blueprint config my-service
-```
-
-## Quick Start
-
-1. Create the shared repo env:
-
-```bash
-cp .env.example .env
-```
-
-2. Edit `.env` and replace every `CHANGE_ME` value.
-
-At minimum you should set:
+4. Edit `.env` and replace every `CHANGE_ME` value.
 
 ```env
 BASE_DOMAIN=yourdomain.com
@@ -73,41 +63,58 @@ NEWT_ID=CHANGE_ME
 NEWT_SECRET=CHANGE_ME
 ```
 
-3. See what blueprints are available:
+5. See what is available:
 
 ```bash
 ./bin/blueprint list
 ```
 
-4. Initialize a blueprint:
+6. Initialize a blueprint:
 
 ```bash
 ./bin/blueprint init <service>
 ```
 
-This creates `services/<service>/.env` from the example and replaces `GENERATE_<IDENTIFIER>` secrets automatically. If the same `GENERATE_<IDENTIFIER>` token appears in multiple keys, those keys receive the same generated value.
+This creates `services/<service>/.env` from the example and replaces any `GENERATE_<IDENTIFIER>` placeholders automatically. If the same token appears more than once, the generated value is reused.
 
-5. Review the generated blueprint env and adjust anything app-specific.
+7. Review `services/<service>/.env` and change anything app-specific.
 
-6. Start the blueprint:
+8. Start it:
 
 ```bash
 ./bin/blueprint up <service>
 ```
 
-`up` prints the expected public URL after the stack starts successfully.
+`up` also starts `newt` automatically and prints the expected public URL when the stack comes up cleanly.
 
-7. Inspect the rendered config if needed:
+Useful follow-up commands:
 
 ```bash
 ./bin/blueprint config <service>
+./bin/blueprint logs <service>
+./bin/blueprint down <service>
 ```
 
-## Shared Auth
+## Common Commands
 
-You can define auth defaults once in the root `.env` and have them applied to every blueprint resource.
+```bash
+./bin/blueprint list
+./bin/blueprint init <service>
+./bin/blueprint init --force <service>
+./bin/blueprint auth <service>
+./bin/blueprint up-base
+./bin/blueprint up <service>
+./bin/blueprint pull <service>
+./bin/blueprint logs <service>
+./bin/blueprint ps <service>
+./bin/blueprint down <service>
+./bin/blueprint cmd <service> pull
+./bin/blueprint cmd <service> exec <container> sh
+```
 
-Use the root `.env` for shared defaults:
+## Shared Auth Defaults
+
+Define shared auth once in the root `.env`:
 
 ```env
 GLOBAL_AUTH_SSO_ENABLED=true
@@ -116,7 +123,7 @@ GLOBAL_AUTH_SSO_ROLE_1=Support
 GLOBAL_AUTH_WHITELIST_USER_0=admin@example.com
 ```
 
-If a specific blueprint needs additional or different auth labels, add `RESOURCE_AUTH_*` entries to `services/<service>/.env`:
+Override or extend auth for one blueprint in `services/<service>/.env`:
 
 ```env
 RESOURCE_AUTH_SSO_ROLE_0=Support
@@ -125,46 +132,19 @@ RESOURCE_AUTH_BASIC_USER=admin
 RESOURCE_AUTH_BASIC_PASSWORD=GENERATE_SERVICE_BASIC_AUTH_PASSWORD
 ```
 
-The wrapper generates the Pangolin Docker labels for you, including indexed labels such as:
-
-- `pangolin.public-resources.<id>.auth.sso-roles[0]=Member`
-- `pangolin.public-resources.<id>.auth.sso-users[0]=user@example.com`
-- `pangolin.public-resources.<id>.auth.whitelist-users[0]=admin@example.com`
-
 Scalar `RESOURCE_AUTH_*` values override `GLOBAL_AUTH_*` values. Indexed `RESOURCE_AUTH_*` arrays are appended after the global arrays.
 
-To preview the generated auth labels without starting the stack:
+Preview the generated labels without starting the stack:
 
 ```bash
 ./bin/blueprint auth <service>
 ```
-
-## Common Commands
-
-```bash
-./bin/blueprint list
-./bin/blueprint new <slug>
-./bin/blueprint init <service>
-./bin/blueprint init --force <service>
-./bin/blueprint auth <service>
-./bin/blueprint up-base
-./bin/blueprint up <service>
-./bin/blueprint cmd <service> pull
-./bin/blueprint cmd <service> exec <container> sh
-./bin/blueprint logs-base
-./bin/blueprint logs <service>
-./bin/blueprint down <service>
-```
-
-`./bin/blueprint up <service>` also starts `newt` automatically.
-
-Starter blueprints currently include `grafana`, `homepage`, `immich`, `jellyfin`, `nextcloud`, `nextcloud-aio`, `prometheus`, and `uptime-kuma`.
 
 ## Updating Images
 
-Most blueprints should expose image names and tags through their service `.env` file.
+Most blueprints expose image names and tags through `services/<service>/.env`.
 
-The normal flow is:
+Typical flow:
 
 1. Edit the relevant image tag in `services/<service>/.env`.
 2. Pull the updated image:
@@ -179,7 +159,7 @@ The normal flow is:
 ./bin/blueprint up <service>
 ```
 
-If you need something more specific, use the generic pass-through command:
+For raw Compose operations, use:
 
 ```bash
 ./bin/blueprint cmd <service> images
@@ -188,76 +168,44 @@ If you need something more specific, use the generic pass-through command:
 ./bin/blueprint cmd <service> exec <container> sh
 ```
 
-## How It Works
+## Create A Blueprint
 
-The repo is split into two layers:
+Scaffold a new blueprint from the template:
 
-- the root stack runs `newt` and owns shared Pangolin settings
-- each service blueprint runs as its own Compose project under `services/<name>/`
-
-The shared `.env` stores:
-
-- `BASE_DOMAIN`
-- `PANGOLIN_ENDPOINT`
-- `NEWT_ID`
-- `NEWT_SECRET`
-- `NEWT_METRICS_PROMETHEUS_ENABLED`
-- `NEWT_ADMIN_ADDR`
-- `NEWT_ADMIN_PORT`
-- `PANGOLIN_DOCKER_NETWORK`
-- `HOST_CONTAINER_SOCKET`
-- optional `GLOBAL_AUTH_*` defaults
-
-Each blueprint has its own `.env` for app-specific values and optional `RESOURCE_AUTH_*` overrides.
-
-Public hostnames are derived from the blueprint subdomain and the shared base domain:
-
-```text
-${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+```bash
+./bin/blueprint new my-service
 ```
 
-## Repo Layout
+Override the defaults if needed:
 
-```text
-.
-|-- .env.example
-|-- docker-compose.yml
-|-- bin/blueprint
-|-- CONTRIBUTING.md
-|-- COMMUNITY.md
-`-- services/
-    |-- _template/
-    |-- grafana/
-    |-- homepage/
-    |-- immich/
-    |-- jellyfin/
-    |-- nextcloud/
-    |-- nextcloud-aio/
-    |-- prometheus/
-    `-- uptime-kuma/
+```bash
+./bin/blueprint new \
+  --name "My Service" \
+  --subdomain my-service \
+  --container-name my-service \
+  --port 8080 \
+  my-service
 ```
 
-## Blueprint Rules
+After scaffolding:
 
-- Every blueprint lives in `services/<slug>/`.
-- Every blueprint should include `docker-compose.yml`, `.env.example`, `README.md`, and a local `.gitignore`.
-- The public Compose service key should match `SERVICE_CONTAINER_NAME` so generated auth labels attach to the correct service.
-- Public app containers should use Pangolin labels in the `pangolin.public-resources.<id>.*` format.
-- HTTP blueprints must define `name`, `protocol`, `full-domain`, and `targets[0].method`.
-- Use `CHANGE_ME` for values users must edit manually.
-- Use `GENERATE_<IDENTIFIER>` for secrets the init helper should replace.
-- Reuse the same `GENERATE_<IDENTIFIER>` token in multiple keys when they must share the same generated value.
-- Use `GLOBAL_AUTH_*` in the root `.env` for shared auth defaults.
-- Use `RESOURCE_AUTH_*` in a service `.env` to override or append auth settings for one blueprint.
-- Keep databases and caches on a private blueprint network.
-- Store persisted service state under `./data/` when possible so it is ignored by default.
-- Only the public app container should join the shared Pangolin network.
+```bash
+./bin/blueprint init my-service
+./bin/blueprint auth my-service
+./bin/blueprint config my-service
+```
 
-## Community
+## How It Is Organized
 
-This repo is meant to be a community catalog, not a one-off deployment repo.
+- The root stack runs `newt` and owns the shared Pangolin connection.
+- Each blueprint runs as its own Compose project under `services/<name>/`.
+- The root `.env` stores shared values such as `BASE_DOMAIN`, `PANGOLIN_ENDPOINT`, `NEWT_ID`, `NEWT_SECRET`, `PANGOLIN_DOCKER_NETWORK`, and optional `GLOBAL_AUTH_*` defaults.
+- Each blueprint has its own `.env` for app-specific values and optional `RESOURCE_AUTH_*` overrides.
+- Public hostnames are derived from `${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}`.
 
-If you want to contribute a blueprint:
+## Contributing
+
+If you want to add a blueprint:
 
 1. Run `./bin/blueprint new <your-app>`.
 2. Keep the setup small and easy to understand.
@@ -267,19 +215,6 @@ If you want to contribute a blueprint:
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md) and [COMMUNITY.md](COMMUNITY.md).
 
-## Why The Wrapper Exists
+## License
 
-Plain `docker compose` gets clumsy when users need to remember:
-
-- a root env
-- a blueprint env
-- the Newt stack
-- the service stack
-
-`./bin/blueprint` smooths that out by:
-
-- initializing service env files
-- generating placeholder secrets
-- merging root and service env values for interpolation
-- starting the shared Newt stack separately from each blueprint stack
-- exposing a generic `cmd` escape hatch for raw Compose operations
+This repository is licensed under the MIT License. See [LICENSE](LICENSE). Individual services may have their own upstream licenses and terms.
