@@ -4,22 +4,23 @@
   <a href="https://docs.pangolin.net/manage/blueprints">Blueprints Docs</a>
 </p>
 
-Community repository of ready-to-use Pangolin Blueprints for applications. 
+Community repository of ready-to-use Pangolin Blueprints for applications.
 
-## Available Blueprints
+## Some Available Blueprints
 
 - `grafana`: dashboards and observability UI
 - `homepage`: self-hosted dashboard with starter config files
 - `immich`: photo and video backup
-- `jellyfin`: media server
-- `nextcloud`: standard Nextcloud with Redis and PostgreSQL
-- `nextcloud-aio`: Nextcloud All-in-One
-- `prometheus`: metrics collection and querying
-- `uptime-kuma`: status page and monitoring
 
-## What Blueprints Are
+[View all availble services](services/) 
+
+## What is Pangolin and what are Blueprints?
+
+Pangolin is an identity-based tunneled reverse proxy that exposes your services with SSO and can also be used as a VPN. 
 
 In Pangolin, a blueprint is a declarative way to define resources and their settings without manual configuration within the dashboard. Within this repository each service has predefined labels which in turn once deployed will automatically create the corresponding resources in the Pangolin dashboard.
+
+Use this repository to expose common self hosted services within minutes without having to set up a reverse proxy, open up ports, or configure network settings.
 
 ## Quick Start
 
