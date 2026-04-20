@@ -12,7 +12,7 @@ Community repository of ready-to-use Pangolin Blueprints for applications.
 - `homepage`: self-hosted dashboard with starter config files
 - `immich`: photo and video backup
 
-[View all availble services](services/) 
+[View all available services](services/) 
 
 ## What is Pangolin and what are Blueprints?
 
