@@ -4,7 +4,7 @@
   <a href="https://docs.pangolin.net/manage/blueprints">Blueprints Docs</a>
 </p>
 
-Community repository of ready-to-use Pangolin Blueprints for applications.
+Community library of ready-to-use Pangolin Blueprints for applications.
 
 ## Some Available Blueprints
 
@@ -16,11 +16,11 @@ Community repository of ready-to-use Pangolin Blueprints for applications.
 
 ## What is Pangolin and what are Blueprints?
 
-Pangolin is an identity-based tunneled reverse proxy that exposes your services with SSO and can also be used as a VPN. 
+[Pangolin](https://github.com/fosrl/pangolin) is an identity-based tunneled reverse proxy that exposes your services with SSO. You can also use it as your VPN.
 
-In Pangolin, a blueprint is a declarative way to define resources and their settings without manual configuration within the dashboard. Within this repository each service has predefined labels which in turn once deployed will automatically create the corresponding resources in the Pangolin dashboard.
+In Pangolin, a blueprint is a declarative way to define resources and their settings without manual configuration within the dashboard. Within this repository, each service has predefined labels which will automatically create and configure the corresponding resources in the Pangolin dashboard.
 
-Use this repository to expose common self hosted services within minutes without having to set up a reverse proxy, open up ports, or configure network settings.
+Use this repository to expose common self-hosted services within minutes without having to set up a reverse proxy, open up ports, or configure network settings.
 
 ## Quick Start
 
