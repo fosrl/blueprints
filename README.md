@@ -13,7 +13,7 @@ Community repository of ready-to-use Pangolin Blueprints for applications.
 - `immich`: photo and video backup
 - `jellyfin`: media server
 - `nextcloud`: standard Nextcloud with Redis and PostgreSQL
-- `nextcloud-aio`: Nextcloud All-in-One adapted for Pangolin
+- `nextcloud-aio`: Nextcloud All-in-One
 - `prometheus`: metrics collection and querying
 - `uptime-kuma`: status page and monitoring
 
@@ -23,9 +23,11 @@ In Pangolin, a blueprint is a declarative way to define resources and their sett
 
 ## Quick Start
 
-1. Create a free account at [app.pangolin.net](https://app.pangolin.net) and add the domain you want these services to use.
+1. Either:
+  -  Create a free account at [app.pangolin.net](https://app.pangolin.net) and attach a base domain to your account.
+  -  Have a [Self Hosted Pangolin](https://docs.pangolin.net/self-host/quick-install) ready to use.
 
-2. Within the dashboard, create a site for the network where this Docker host runs, then copy that site's Newt configuration.
+2. Within the dashboard, create a site, then copy that site's configuration.
 
 You need these three values in this repo:
 
@@ -35,7 +37,7 @@ NEWT_ID=...
 NEWT_SECRET=...
 ```
 
-`NEWT_ID` identifies the site connector, `NEWT_SECRET` authenticates it, and the Pangolin Cloud endpoint is `https://app.pangolin.net`.
+`NEWT_ID` identifies the site connector, `NEWT_SECRET` authenticates it, and the Pangolin Cloud endpoint is `https://app.pangolin.net` or replace with your Pangolin dashboard url.
 
 3. Clone this repository and create the shared repo env:
 
@@ -48,7 +50,7 @@ cd blueprints && cp .env.example .env
 
 ```env
 BASE_DOMAIN=yourdomain.com
-PANGOLIN_ENDPOINT=https://app.pangolin.net
+PANGOLIN_ENDPOINT=https://app.pangolin.net ## change if self hosted
 NEWT_ID=CHANGE_ME
 NEWT_SECRET=CHANGE_ME
 ```
@@ -67,7 +69,7 @@ NEWT_SECRET=CHANGE_ME
 
 This creates `services/<service>/.env` from the example and replaces any `GENERATE_<IDENTIFIER>` placeholders automatically. If the same token appears more than once, the generated value is reused.
 
-7. Review `services/<service>/.env` and change anything app-specific.
+7. Review `services/<service>/.env` and change anything app-specific. Sanity check that `./bin/blueprint config <service>` produces configuration you expect.
 
 8. Start it:
 
@@ -83,23 +85,6 @@ Useful follow-up commands:
 ./bin/blueprint config <service>
 ./bin/blueprint logs <service>
 ./bin/blueprint down <service>
-```
-
-## Common Commands
-
-```bash
-./bin/blueprint list
-./bin/blueprint init <service>
-./bin/blueprint init --force <service>
-./bin/blueprint auth <service>
-./bin/blueprint up-base
-./bin/blueprint up <service>
-./bin/blueprint pull <service>
-./bin/blueprint logs <service>
-./bin/blueprint ps <service>
-./bin/blueprint down <service>
-./bin/blueprint cmd <service> pull
-./bin/blueprint cmd <service> exec <container> sh
 ```
 
 ## Shared Auth Defaults
