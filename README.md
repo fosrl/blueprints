@@ -1,12 +1,10 @@
-# Pangolin Blueprints
-
 <p align="center">
   <a href="https://pangolin.net">Pangolin</a> |
   <a href="https://app.pangolin.net">Pangolin Cloud</a> |
   <a href="https://docs.pangolin.net/manage/blueprints">Blueprints Docs</a>
 </p>
 
-Community-maintained repository of ready-to-run Docker Compose blueprints for exposing applications through Pangolin.
+Community repository of ready-to-use Pangolin Blueprints for applications. 
 
 ## Available Blueprints
 
@@ -21,21 +19,13 @@ Community-maintained repository of ready-to-run Docker Compose blueprints for ex
 
 ## What Blueprints Are
 
-In Pangolin, a blueprint is a declarative way to define resources and their settings. This repo packages that idea into service-specific Docker Compose stacks with the Pangolin labels, environment files, and defaults already wired in.
+In Pangolin, a blueprint is a declarative way to define resources and their settings without manual configuration within the dashboard. Within this repository each service has predefined labels which in turn once deployed will automatically create the corresponding resources in the Pangolin dashboard.
 
-Why that is useful:
-
-- you do not have to hand-write Pangolin Docker labels from scratch
-- each app stays isolated in `services/<name>/`
-- shared Pangolin and Newt settings live once in the root `.env`
-- service secrets can be generated during `init`
-- the normal flow is reduced to `init`, review, and `up`
-
-## Fastest Start
+## Quick Start
 
 1. Create a free account at [app.pangolin.net](https://app.pangolin.net) and add the domain you want these services to use.
 
-2. In Pangolin Cloud, create a site for the network where this Docker host runs, then copy that site's Newt configuration.
+2. Within the dashboard, create a site for the network where this Docker host runs, then copy that site's Newt configuration.
 
 You need these three values in this repo:
 
