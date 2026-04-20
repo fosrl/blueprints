@@ -1,6 +1,6 @@
 # Community Guide
 
-This repo is intended to be a shared library of Pangolin blueprints that other people can trust, understand, and run without digging through a long thread or reverse-engineering labels.
+This repo is intended to be a shared library of Pangolin blueprints that other people can trust, understand and deploy within minutes.
 
 ## What Makes A Good Blueprint
 
@@ -40,12 +40,3 @@ Community blueprints should be reviewed for:
 - Keep comments short and useful.
 - Avoid clever shell tricks in docs.
 - Optimize for the person running the blueprint for the first time.
-
-## Future Improvements
-
-As the repo grows, useful additions would be:
-
-- validation tooling for blueprint metadata and labels
-- CI checks for Compose rendering
-- a generated index of available blueprints
-- screenshots or app summaries for discovery
