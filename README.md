@@ -22,6 +22,8 @@ In Pangolin, a blueprint is a declarative way to define resources and their sett
 
 Use this repository to expose common self-hosted services within minutes without having to set up a reverse proxy, open up ports, or configure network settings.
 
+- Watch the video (YouTube): https://www.youtube.com/watch?v=j_chhXwFD9w
+
 ## Quick Start
 
 1. Either:
