@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+    environment:
+      - PAPERLESS_URL=https://${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
     depends_on:
       paperless-redis:
         condition: service_healthy
