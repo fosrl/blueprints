@@ -1,0 +1,69 @@
+services:
+  paperless-webserver:
+    image: ${PAPERLESS_IMAGE:-ghcr.io/paperless-ngx/paperless-ngx}:${PAPERLESS_TAG:-latest}
+    container_name: ${SERVICE_CONTAINER_NAME}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      - PAPERLESS_URL=https://${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+    depends_on:
+      paperless-redis:
+        condition: service_healthy
+      paperless-database:
+        condition: service_healthy
+    expose:
+      - "${SERVICE_PORT}"
+    volumes:
+      - ./data/data:/usr/src/paperless/data
+      - ./data/media:/usr/src/paperless/media
+      - ./data/export:/usr/src/paperless/export
+      - ./data/consume:/usr/src/paperless/consume
+    labels:
+      - pangolin.public-resources.${BLUEPRINT_NAME}.name=${RESOURCE_NAME}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.full-domain=${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}
+      - pangolin.public-resources.${BLUEPRINT_NAME}.protocol=http
+      - pangolin.public-resources.${BLUEPRINT_NAME}.targets[0].method=http
+    networks:
+      - pangolin
+      - paperless
+
+  paperless-redis:
+    image: ${REDIS_IMAGE:-docker.io/library/redis}:${REDIS_TAG:-8}
+    container_name: paperless-redis
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli ping || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - paperless
+
+  paperless-database:
+    image: ${POSTGRES_IMAGE:-docker.io/library/postgres}:${POSTGRES_TAG:-17}
+    container_name: paperless-database
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready --dbname=${POSTGRES_DB} --username=${POSTGRES_USER} || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - paperless
+
+networks:
+  pangolin:
+    external: true
+    name: ${PANGOLIN_DOCKER_NETWORK:-pangolin_default}
+  paperless:
