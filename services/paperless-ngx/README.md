@@ -53,7 +53,7 @@ Start Paperless-ngx:
 ./bin/blueprint up paperless-ngx
 ```
 
-This also starts `newt` if it is not already running.
+This also starts Pangolin Site if it is not already running.
 
 Render the final Compose config without starting containers:
 
@@ -137,7 +137,7 @@ The public app container uses these required Pangolin HTTP labels:
 - `pangolin.public-resources.paperless-ngx.protocol`
 - `pangolin.public-resources.paperless-ngx.targets[0].method`
 
-This blueprint intentionally omits `hostname`, `port`, and `site` so Pangolin can auto-detect the target and attach it to the discovering Newt site.
+This blueprint intentionally omits `hostname`, `port`, and `site` so Pangolin can auto-detect the target and attach it to the discovering Pangolin Site.
 
 ## Files
 

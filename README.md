@@ -36,11 +36,11 @@ You need these three values in this repo:
 
 ```env
 PANGOLIN_ENDPOINT=https://app.pangolin.net
-NEWT_ID=...
-NEWT_SECRET=...
+SITE_ID=...
+SITE_SECRET=...
 ```
 
-`NEWT_ID` identifies the site connector, `NEWT_SECRET` authenticates it, and the Pangolin Cloud endpoint is `https://app.pangolin.net` or replace with your Pangolin dashboard url.
+`SITE_ID` identifies the site connector, `SITE_SECRET` authenticates it, and the Pangolin Cloud endpoint is `https://app.pangolin.net` or replace with your Pangolin dashboard url.
 
 3. Clone this repository and create the shared repo env:
 
@@ -54,8 +54,8 @@ cd blueprints && cp .env.example .env
 ```env
 BASE_DOMAIN=yourdomain.com
 PANGOLIN_ENDPOINT=https://app.pangolin.net ## change if self hosted
-NEWT_ID=CHANGE_ME
-NEWT_SECRET=CHANGE_ME
+SITE_ID=CHANGE_ME
+SITE_SECRET=CHANGE_ME
 ```
 
 5. See what is available:
@@ -80,7 +80,7 @@ This creates `services/<service>/.env` from the example and replaces any `GENERA
 ./bin/blueprint up <service>
 ```
 
-`up` also starts `newt` automatically and prints the expected public URL when the stack comes up cleanly.
+`up` also starts the Pangolin Site automatically and prints the expected public URL when the stack comes up cleanly.
 
 Useful follow-up commands:
 
@@ -175,9 +175,9 @@ After scaffolding:
 
 ## How It Is Organized
 
-- The root stack runs `newt` and owns the shared Pangolin connection.
+- The root stack runs the Pangolin Site and owns the shared Pangolin connection.
 - Each blueprint runs as its own Compose project under `services/<name>/`.
-- The root `.env` stores shared values such as `BASE_DOMAIN`, `PANGOLIN_ENDPOINT`, `NEWT_ID`, `NEWT_SECRET`, `PANGOLIN_DOCKER_NETWORK`, and optional `GLOBAL_AUTH_*` defaults.
+- The root `.env` stores shared values such as `BASE_DOMAIN`, `PANGOLIN_ENDPOINT`, `SITE_ID`, `SITE_SECRET`, `PANGOLIN_DOCKER_NETWORK`, and optional `GLOBAL_AUTH_*` defaults.
 - Each blueprint has its own `.env` for app-specific values and optional `RESOURCE_AUTH_*` overrides.
 - Public hostnames are derived from `${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}`.
 

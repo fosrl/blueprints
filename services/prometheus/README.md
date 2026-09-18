@@ -2,14 +2,14 @@
 
 Prometheus is a self-hosted metrics and alerting blueprint for Pangolin using the official container image.
 
-This blueprint includes a tracked starter config that scrapes Prometheus itself and the shared root `newt` container, so the stack comes up with a useful default before you add real targets.
+This blueprint includes a tracked starter config that scrapes Prometheus itself and the shared root `pangolin-site` container, so the stack comes up with a useful default before you add real targets.
 
 ## What You Get
 
 - public hostname derived from `${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}`
 - persistent Prometheus data under `services/prometheus/data/`
 - tracked starter config under `services/prometheus/config/prometheus.yml`
-- default scraping for `prometheus:9090` and `newt:2112`
+- default scraping for `prometheus:9090` and `pangolin-site:2112`
 
 With the default values, the public hostname becomes:
 
@@ -65,9 +65,9 @@ Then edit `services/prometheus/config/prometheus.yml` to add your real scrape ta
 The starter config already includes:
 
 - `prometheus:9090`
-- `newt:2112`
+- `pangolin-site:2112`
 
-The `newt` target assumes the root stack keeps the default `NEWT_CONTAINER_NAME=newt`. If you change that value in the root `.env`, update the Prometheus target to match.
+The `pangolin-site` target assumes the root stack keeps the default `SITE_CONTAINER_NAME=pangolin-site`. If you change that value in the root `.env`, update the Prometheus target to match.
 
 ## Updating Versions
 

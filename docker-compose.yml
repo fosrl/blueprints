@@ -1,19 +1,19 @@
 services:
-  newt:
-    image: ${NEWT_IMAGE:-fosrl/newt:latest}
-    container_name: ${NEWT_CONTAINER_NAME:-newt}
+  pangolin-site:
+    image: ${SITE_IMAGE:-fosrl/pangolin-cli:latest}
+    container_name: ${SITE_CONTAINER_NAME:-pangolin-site}
     restart: unless-stopped
     expose:
-      - "${NEWT_ADMIN_PORT:-2112}"
+      - "${SITE_ADMIN_PORT:-2112}"
     volumes:
       - ${HOST_CONTAINER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
     environment:
       - PANGOLIN_ENDPOINT=${PANGOLIN_ENDPOINT}
-      - NEWT_ID=${NEWT_ID}
-      - NEWT_SECRET=${NEWT_SECRET}
+      - SITE_ID=${SITE_ID}
+      - SITE_SECRET=${SITE_SECRET}
       - DOCKER_SOCKET=/var/run/docker.sock
-      - NEWT_METRICS_PROMETHEUS_ENABLED=${NEWT_METRICS_PROMETHEUS_ENABLED:-true}
-      - NEWT_ADMIN_ADDR=${NEWT_ADMIN_ADDR:-:2112}
+      - SITE_METRICS_PROMETHEUS_ENABLED=${SITE_METRICS_PROMETHEUS_ENABLED:-true}
+      - SITE_ADMIN_ADDR=${SITE_ADMIN_ADDR:-:2112}
     networks:
       - pangolin
 

@@ -578,7 +578,7 @@ main() {
     up)
       [[ $# -ge 2 ]] || die "up requires a service name"
       shift
-      compose_base up -d newt
+      compose_base up -d pangolin-site
       compose_for_service "$1" up -d "${@:2}"
       print_service_access_info "$1"
       ;;

@@ -2,15 +2,15 @@
 
 Grafana is a self-hosted observability dashboard blueprint for Pangolin using the official Docker image.
 
-This blueprint keeps the setup intentionally small: one public Grafana container with persistent local state plus the vendored Newt Grafana examples for datasource and dashboard provisioning.
+This blueprint keeps the setup intentionally small: one public Grafana container with persistent local state plus the vendored Pangolin Site Grafana examples for datasource and dashboard provisioning.
 
 ## What You Get
 
 - public hostname derived from `${SERVICE_SUBDOMAIN}.${BASE_DOMAIN}`
 - generated admin password on `init`
 - persistent Grafana state under `services/grafana/data/`
-- provisioned Prometheus datasource from the pinned Newt repo example
-- `Newt Overview` dashboard from the pinned Newt repo example
+- provisioned Prometheus datasource from the pinned Pangolin Site repo example
+- `Site Overview` dashboard from the pinned Pangolin Site repo example
 
 With the default values, the public hostname becomes:
 
@@ -95,6 +95,6 @@ The public app container uses these required Pangolin HTTP labels:
 
 - `docker-compose.yml`: the Grafana service definition
 - `.env.example`: blueprint defaults and generated admin password placeholder
-- `provisioning/datasources/prometheus.yaml`: vendored Newt datasource example
-- `provisioning/dashboards/dashboard.yaml`: vendored Newt dashboard provider example
-- `dashboards/newt-overview.json`: vendored Newt overview dashboard
+- `provisioning/datasources/prometheus.yaml`: vendored Pangolin Site datasource example
+- `provisioning/dashboards/dashboard.yaml`: vendored Pangolin Site dashboard provider example
+- `dashboards/site-overview.json`: vendored Pangolin Site overview dashboard
